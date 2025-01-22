@@ -24,7 +24,6 @@ export default function ProductList() {
   const fetchProducts = async () =>{
     try {
       const response = await axios.get('/product/all');  // 从后端获取所有产品
-      console.log(response.data)
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
 // customer pages
 import Signin from './pages/user/SigninPage';
@@ -10,6 +10,8 @@ import CartPage from './pages/user/CartPage';
 import ChekOutPage from './pages/user/ChekOutPage';
 import PlaceOrderPage from './pages/user/PlaceOrderPage';
 import UserProfile from './pages/user/UserProfile';
+import OrderHistory from './pages/user/OrderHistory';
+import Order from './pages/user/Order';
 
 // admin pages
 import AdminLayout from './pages/admin/AdminLayout';
@@ -24,6 +26,7 @@ function App() {
       <div className="App">
         <Routes>
           {/* customer */}
+          <Route path="/" element={<Navigate to="/signin" />} />
           <Route path="/signin" element={<Signin />} />
           <Route path="/register" element={<Signup />} />
           <Route path="/gallery" element={<GalleryPage />} />
@@ -32,6 +35,8 @@ function App() {
           <Route path="/checkout" element={<ChekOutPage />} />
           <Route path="/placeOrder" element={<PlaceOrderPage />} />
           <Route path="/profile" element={<UserProfile />} />
+          <Route path="/history" element={<OrderHistory />} />
+          <Route path="/order" element={<Order />} />
 
           {/* admin - AdminLayout */}
           <Route path="/admin" element={<AdminLayout />}>

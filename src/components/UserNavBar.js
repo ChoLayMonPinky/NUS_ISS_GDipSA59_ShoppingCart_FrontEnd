@@ -1,7 +1,7 @@
 // Navbar.js
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ShoppingCart, User, LogIn, LogOut } from 'lucide-react';
+import { ScrollText, Search, ShoppingCart, User, LogIn, LogOut } from 'lucide-react';
 
 export default function Navbar() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -15,7 +15,6 @@ export default function Navbar() {
     <nav className="bg-white shadow-sm">
       <div className="container mx-auto px-8 py-4">
         <div className="flex items-center justify-between">
-          {/* 标题：字体调大并加粗 */}
           <Link to="/" className="text-3xl font-extrabold text-blue-600">Food Delights</Link>
           <div className="flex items-center space-x-4">
             <div className={`relative transition-all duration-300 ${isSearchExpanded ? 'w-64' : 'w-40'}`}>
@@ -33,6 +32,9 @@ export default function Navbar() {
             </Link>
             <Link to="/profile" className="text-gray-600 hover:text-blue-600">
               <User size={20} />
+            </Link>
+            <Link to="/history" className="text-gray-600 hover:text-blue-600">
+              <ScrollText size={20} />
             </Link>
             <button onClick={toggleLogin} className="text-gray-600 hover:text-blue-600">
               {isLoggedIn ? <LogOut size={20} /> : <LogIn size={20} />}

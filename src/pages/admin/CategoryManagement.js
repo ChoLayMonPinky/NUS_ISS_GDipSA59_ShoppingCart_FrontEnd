@@ -16,18 +16,19 @@ export default function CategoryManagement() {
     const [editingCategory, setEditingCategory] = useState(null);
     const navigate = useNavigate();
 
+    // Fetch categories from the backend
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('/category/all');
+        setCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching category:', error);
+      }
+    }
+
     // get categories method - finish
     useEffect(() => {
-        // Fetch categories from the backend
-        async function fetchCategories() {
-        try {
-            const response = await axios.get('/category/all');
-            setCategories(response.data);
-        } catch (error) {
-            console.error('获取类别时发生错误:', error);
-        }
-        }
-        fetchCategories();
+      fetchCategories();
     }, []);
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -46,10 +47,11 @@ export default function CategoryManagement() {
             setCategories([...categories, response.data]);
             setNewCategory({ name: '', description: '' });
             setIsAddModalOpen(false);
+            fetchCategories();
             navigate('/admin/categories');
         }
         } catch (error) {
-        console.error('can\'t add category', error);
+          console.error('can\'t add category', error);
         }
     };
 

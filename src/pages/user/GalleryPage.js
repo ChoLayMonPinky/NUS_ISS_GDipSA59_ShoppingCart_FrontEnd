@@ -16,7 +16,6 @@ export default function GalleryPage() {
     const checkSession = async () => {
       try {
         const response = await axios.get('/users/session', { withCredentials: true });
-        console.log(response.data)
         if (response.status !== 200) {
           navigate('/signin'); // 如果用户未登录，重定向回登录页面
         }
@@ -24,7 +23,6 @@ export default function GalleryPage() {
         navigate('/signin'); // 如果发生错误，重定向到登录页面
       }
     };
-  
     checkSession();
   }, [navigate]);
   
@@ -38,7 +36,6 @@ export default function GalleryPage() {
         console.error('Error fetching products:', error);
       }
     };
-
     fetchProducts();
   }, []);
 
