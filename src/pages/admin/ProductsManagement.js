@@ -1,14 +1,18 @@
+// Author
+// YAO YIYANG A0294873L
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash, Edit } from 'lucide-react';  // 添加 Trash 和 Edit 图标
+import { Plus, Trash, Edit } from 'lucide-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function ProductList() {
-  const [currentPage, setCurrentPage] = useState(1); // 分页
+  const [currentPage, setCurrentPage] = useState(1); // set pages
   const [productsPerPage, setProductsPerPage] = useState(5);
-  const [products, setProducts] = useState([]);  // 存储所有产品
+  const [products, setProducts] = useState([]);  // store all products
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [categories, setCategories] = useState([]); // 用于存储所有类别
+  const [categories, setCategories] = useState([]); // store all categories
+  const navigate = useNavigate();
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
@@ -18,13 +22,32 @@ export default function ProductList() {
     image: null,
   });
   const [imagePreview, setImagePreview] = useState(null);
-  const [editingProduct, setEditingProduct] = useState(null);  // 用于存储当前正在编辑的产品
+  const [editingProduct, setEditingProduct] = useState(null);  // store edit product
+
+  // check the session - finish
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await axios.get('/users/session', { withCredentials: true });
+        console.log(response);
+        if (response.status !== 200) {
+          navigate('/signin'); 
+        }
+        if (response.data.data.role !== 'ADMIN'){
+          navigate('/gallery')
+        }
+      } catch (error) {
+        navigate('/signin');
+      }
+    };
+    checkSession();
+  }, [navigate]);
 
   // define a function to fetchProducts
+  // get all prodcuts from backend - finish
   const fetchProducts = async () =>{
     try {
-      const response = await axios.get('/product/all');  // 从后端获取所有产品
-      console.log(response.data)
+      const response = await axios.get('/product/all'); 
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -50,7 +73,6 @@ export default function ProductList() {
   }, []);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewProduct({ ...newProduct, [name]: value });  // 确保字段名对应 newProduct 的键
@@ -67,11 +89,11 @@ export default function ProductList() {
     e.preventDefault();
   
     const formData = new FormData();
-    formData.append('name', newProduct.name);  // 确保 name 参数存在
+    formData.append('name', newProduct.name);  // ensure name exist
     formData.append('price', newProduct.price);
     formData.append('description', newProduct.description);
     formData.append('stock', newProduct.stock);
-    formData.append('categoryId', newProduct.categoryId);  // 添加 categoryId
+    formData.append('categoryId', newProduct.categoryId);  // add categoryId
     formData.append('image', newProduct.image);
   
     try {
@@ -87,7 +109,7 @@ export default function ProductList() {
           image: null,
         });
         setImagePreview(null);
-        fetchProducts();  // 重新获取产品列表以刷新页面
+        fetchProducts();  // fresh this page and get data again
       }
     } catch (error) {
       console.error('Error adding product:', error);
@@ -99,7 +121,7 @@ export default function ProductList() {
     try {
       const response = await axios.delete(`/product/delete/${productId}`);
       if (response.status === 200) {
-        fetchProducts();  // 重新获取产品列表
+        fetchProducts();  // 
       }
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -140,7 +162,7 @@ export default function ProductList() {
     }
   };
 
-  // 获取当前页的产品
+  // get product 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = products.slice(indexOfFirstProduct, indexOfLastProduct);
@@ -152,15 +174,14 @@ export default function ProductList() {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-300 flex items-center"
-          >
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-300 flex items-center">
             <Plus size={20} />
             <span className="ml-2">Add Product</span>
           </button>
         </div>
       </div>
 
-      {/* 产品列表表格 */}
+      {/* product list */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -199,14 +220,12 @@ export default function ProductList() {
                         image: null,
                       });
                     }}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600 mr-2"
-                  >
+                    className="bg-yellow-500 text-white px-2 py-1 rounded-md hover:bg-yellow-600 mr-2">
                     <Edit size={16} />
                   </button>
                   <button 
                     onClick={() => handleDeleteProduct(product.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
-                  >
+                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600">
                     <Trash size={16} />
                   </button>
                 </td>
@@ -231,7 +250,7 @@ export default function ProductList() {
         </div>
       </div>
 
-      {/* 添加商品的模态框 */}
+      {/* add product */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -247,8 +266,7 @@ export default function ProductList() {
                     value={newProduct.name}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter product name"
-                  />
+                    placeholder="Enter product name"/>
                 </div>
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price</label>
@@ -259,8 +277,7 @@ export default function ProductList() {
                     value={newProduct.price}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter price"
-                  />
+                    placeholder="Enter price"/>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -271,8 +288,7 @@ export default function ProductList() {
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter product description"
-                    rows="3"
-                  ></textarea>
+                    rows="3"></textarea>
                 </div>
                 <div>
                   <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
@@ -283,8 +299,7 @@ export default function ProductList() {
                     value={newProduct.stock}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter stock quantity"
-                  />
+                    placeholder="Enter stock quantity"/>
                 </div>
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -294,8 +309,7 @@ export default function ProductList() {
                     value={newProduct.categoryId}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
+                    required>
                     <option value="">Select a category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>  {/* 使用 category.id */}
@@ -311,8 +325,7 @@ export default function ProductList() {
                     type="file"
                     onChange={handleImageUpload}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    accept="image/*"
-                  />
+                    accept="image/*"/>
                   {imagePreview && (
                     <img src={imagePreview} alt="Preview" className="mt-2 h-32 w-32 object-cover rounded-md" />
                   )}
@@ -326,14 +339,12 @@ export default function ProductList() {
                     setNewProduct({ name: '', price: '', description: '', stock: '', categoryId: '', image: null });
                     setImagePreview(null);
                   }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300">
                   Add Product
                 </button>
               </div>
@@ -342,7 +353,7 @@ export default function ProductList() {
         </div>
       )}
 
-      {/* 编辑商品的模态框 */}
+      {/* edit product */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -359,8 +370,7 @@ export default function ProductList() {
                     value={newProduct.name}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter product name"
-                  />
+                    placeholder="Enter product name"/>
                 </div>
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price</label>
@@ -371,8 +381,7 @@ export default function ProductList() {
                     value={newProduct.price}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter price"
-                  />
+                    placeholder="Enter price"/>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -383,8 +392,7 @@ export default function ProductList() {
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter product description"
-                    rows="3"
-                  ></textarea>
+                    rows="3"></textarea>
                 </div>
                 <div>
                   <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
@@ -395,8 +403,7 @@ export default function ProductList() {
                     value={newProduct.stock}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter stock quantity"
-                  />
+                    placeholder="Enter stock quantity"/>
                 </div>
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -406,8 +413,7 @@ export default function ProductList() {
                     value={newProduct.categoryId}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
+                    required>
                     <option value="">Select a category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>  {/* 使用 category.id */}
@@ -423,8 +429,7 @@ export default function ProductList() {
                     type="file"
                     onChange={handleImageUpload}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    accept="image/*"
-                  />
+                    accept="image/*"/>
                   {imagePreview && (
                     <img src={imagePreview} alt="Preview" className="mt-2 h-32 w-32 object-cover rounded-md" />
                   )}
@@ -438,14 +443,12 @@ export default function ProductList() {
                     setNewProduct({ name: '', price: '', description: '', stock: '', categoryId: '', image: null });
                     setImagePreview(null);
                   }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300">
                   Update Product
                 </button>
               </div>

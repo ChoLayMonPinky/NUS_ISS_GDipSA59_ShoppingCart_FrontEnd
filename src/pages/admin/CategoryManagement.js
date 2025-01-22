@@ -1,7 +1,10 @@
+// Author
+// HUANG ZHENJIA A0298312B
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../components/MessageBox';
 
 export default function CategoryManagement() {
     const [categories, setCategories] = useState([]);
@@ -15,23 +18,43 @@ export default function CategoryManagement() {
     });
     const [editingCategory, setEditingCategory] = useState(null);
     const navigate = useNavigate();
+    const { addToast } = useToast();
+
+    // check the session - finish
+    useEffect(() => {
+      const checkSession = async () => {
+        try {
+          const response = await axios.get('/users/session', { withCredentials: true });
+          console.log(response);
+          if (response.status !== 200) {
+            navigate('/signin'); 
+          }
+          if (response.data.data.role !== 'ADMIN'){
+            navigate('/gallery')
+          }
+        } catch (error) {
+          navigate('/signin');
+        }
+      };
+      checkSession();
+    }, [navigate]);
+
+    // Fetch categories from the backend
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('/category/all');
+        setCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching category:', error);
+      }
+    }
 
     // get categories method - finish
     useEffect(() => {
-        // Fetch categories from the backend
-        async function fetchCategories() {
-        try {
-            const response = await axios.get('/category/all');
-            setCategories(response.data);
-        } catch (error) {
-            console.error('获取类别时发生错误:', error);
-        }
-        }
-        fetchCategories();
+      fetchCategories();
     }, []);
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setNewCategory({ ...newCategory, [name]: value });
@@ -46,10 +69,11 @@ export default function CategoryManagement() {
             setCategories([...categories, response.data]);
             setNewCategory({ name: '', description: '' });
             setIsAddModalOpen(false);
+            fetchCategories();
             navigate('/admin/categories');
         }
         } catch (error) {
-        console.error('can\'t add category', error);
+          console.error('can\'t add category', error);
         }
     };
 
@@ -58,49 +82,46 @@ export default function CategoryManagement() {
         e.preventDefault();
         
         try {
-        // 发送 PUT 请求到后端更新类别
         const response = await axios.put(`/category/update/${editingCategory.id}`, {
             name: newCategory.name,
             description: newCategory.description,
         });
     
         if (response.status === 200) {
-            // 更新状态中的类别列表
             setCategories(
             categories.map((cat) =>
                 cat.id === editingCategory.id ? { ...cat, ...newCategory } : cat
             )
             );
-            // 重置表单和状态
+            // reset form and status
             setEditingCategory(null);
             setNewCategory({ name: '', description: '' });
             setIsEditModalOpen(false);
     
-            // 跳转回类别列表页
+            // jump to other pages
             navigate('/admin/categories');
         }
         } catch (error) {
-        console.error('编辑类别时发生错误:', error);
+          console.error('can not edit', error);
         }
     };
 
     // delete categories method
     const handleDeleteCategory = async (id) => {
         try {
-        await axios.delete(`/category/delete/${id}`);
-        setCategories(categories.filter((cat) => cat.id !== id));
+          const response = await axios.delete(`/category/delete/${id}`);
+          setCategories(categories.filter((cat) => cat.id !== id));
         } catch (error) {
-        console.error('删除类别时发生错误:', error);
+          addToast(error.response.data.message, 'error', 3000)
+          console.error('can not modify', error);
         }
     };
-
     const handleOpenEditModal = (category) => {
         setEditingCategory(category);
         setNewCategory({ name: category.name, description: category.description });
         setIsEditModalOpen(true);
     };
 
-  // 分页逻辑
   const indexOfLastCategory = currentPage * categoriesPerPage;
   const indexOfFirstCategory = indexOfLastCategory - categoriesPerPage;
   const currentCategories = categories.slice(indexOfFirstCategory, indexOfLastCategory);
@@ -170,7 +191,7 @@ export default function CategoryManagement() {
         </div>
       </div>
 
-      {/* 添加类别模态框 */}
+      {/* add category model */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -186,8 +207,7 @@ export default function CategoryManagement() {
                     value={newCategory.name}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter category name"
-                  />
+                    placeholder="Enter category name"/>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -198,22 +218,14 @@ export default function CategoryManagement() {
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter category description"
-                    rows="3"
-                  ></textarea>
+                    rows="3"></textarea>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300"
-                >
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
-                >
+                <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300">
                   Add Category
                 </button>
               </div>
@@ -222,7 +234,7 @@ export default function CategoryManagement() {
         </div>
       )}
 
-      {/* 编辑类别模态框 */}
+      {/* edit */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -238,8 +250,7 @@ export default function CategoryManagement() {
                     value={newCategory.name}
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter category name"
-                  />
+                    placeholder="Enter category name"/>
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -250,22 +261,19 @@ export default function CategoryManagement() {
                     onChange={handleInputChange}
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter category description"
-                    rows="3"
-                  ></textarea>
+                    rows="3"></textarea>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-4">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-300">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
-                >
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300">
                   Update Category
                 </button>
               </div>

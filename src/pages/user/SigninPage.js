@@ -1,36 +1,36 @@
+// Author
+// HUANG ZHENJIA A0298312B
+
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../components/MessageBox';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ username: '', password: '' });
-  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // 验证表单输入
+    // validation input
     if (form.username.trim() === '' || form.password.trim() === '') {
-      setErrorMessage('用户名和密码不能为空');
+      addToast("Username or Password can not be empty!", "error", 3000)
       return;
     }
-
     try {
-      // 使用 Axios 发送登录请求
-      const response = await axios.post('/users/login', {
-        username: form.username,  // 使用用户名字段
-        password: form.password,
-      }, { withCredentials: true });
-
+      const response = await axios.post('/users/login', { username: form.username, password: form.password}, { withCredentials: true });
       if (response.data.statusCode === 200) {
-        // 登录成功后跳转到 dashboard
-        navigate('/gallery');
-      } else {
-        setErrorMessage(response.data.message || '登录失败');
-      }
+        addToast(response.data.message, "success", 3000);
+        const role = response.data.data.role;
+        if (role === 'USER'){
+          navigate('/gallery');
+        } else if (role === 'ADMIN') {
+          navigate('/admin/products');
+        }
+      } 
     } catch (error) {
-      setErrorMessage('服务器出错，请稍后再试');
+      addToast("Login Failure", "error", 3000)
     }
   };
 
@@ -81,12 +81,6 @@ export default function LoginPage() {
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in</h2>
           </div>
 
-          {errorMessage && (
-            <p className="text-red-500 text-center">
-              {errorMessage}
-            </p>
-          )}
-
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="rounded-md shadow-sm -space-y-px">
               <div>
@@ -98,7 +92,6 @@ export default function LoginPage() {
                   name="username"
                   type="text"
                   autoComplete="username"
-                  required
                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                   placeholder="Username"
                   value={form.username}
@@ -114,7 +107,6 @@ export default function LoginPage() {
                   name="password"
                   type="password"
                   autoComplete="current-password"
-                  required
                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                   placeholder="Password"
                   value={form.password}

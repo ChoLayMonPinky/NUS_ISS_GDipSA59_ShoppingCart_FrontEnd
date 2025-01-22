@@ -1,116 +1,265 @@
-import React, { useState } from 'react';
-import { CreditCard, DollarSign, Wallet, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+// Author
+// HUANG ZHENJIA A0298312B
+// LI WEIYI A0307246H
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import Confetti from 'react-confetti';
+import axios from 'axios';
+import { useToast } from '../../components/MessageBox';
 
-const PlaceOrderPage = () => {
-  const navigate = useNavigate();
+const ReviewOrderPage = () => {
   const [showAllItems, setShowAllItems] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('credit_card');
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { addToast } = useToast();
 
-  const orderSummary = [
-    { name: 'Professional plan', description: 'Monthly subscription', price: 15.00 },
-    { name: 'Dedicated support', description: 'Included in the Professional plan', price: 0 },
-    { name: 'Hardware', description: 'Devices needed for development', price: 69.99 },
-    { name: 'Landing page template', description: 'License', price: 49.99 },
-    { name: 'Custom domain', description: 'Annual fee', price: 12.00 },
-    { name: 'SSL Certificate', description: 'Annual fee', price: 75.00 },
-    { name: 'Email marketing tool', description: 'Monthly subscription', price: 29.99 },
-  ];
+  // get data from CheckoutPage
+  const selectedCartItems = location.state?.orderData.selectedCartItems || [];
+  const total = Number(location.state?.orderData.total) || 0; // make sure the total is number!!!
+  const shippingDetails = location.state?.orderData.shippingDetails;
+  const paymentMethod = location.state?.orderData.paymentMethod;
 
-  // Calculate total price
-  const total = orderSummary.reduce((sum, item) => sum + item.price, 0);
+  const name = shippingDetails ? `${shippingDetails.firstName} ${shippingDetails.lastName}` : 'No name provided';
+  const address = shippingDetails ? `${shippingDetails.address1} ${shippingDetails.address2 ? `, ${shippingDetails.address2}` : ''}, ${shippingDetails.zip}, ${shippingDetails.city}, ${shippingDetails.country}`: 'No address provided';
 
-  const displayedItems = showAllItems ? orderSummary : orderSummary.slice(0, 3);
+  // shipping ? should have?
+  const shippingCost = 0;
+  const grandTotal = Number(total) + shippingCost; // make sure grandTotal is digital
 
-  const handlePlaceOrder = () => {
-    // Simulate order placement logic here
-    alert('Order placed successfully!');
-    navigate('/confirmation'); // Navigate to a confirmation page after placing the order
+  // check the session - finish
+  useEffect(() =>{
+    const checkSession = async () => {
+      try {
+        const response = await axios.get('/users/session', { withCredentials: true });
+        if (response.status !== 200){
+          navigate('/signin');
+        }
+      } catch (error) {
+        navigate('/signin')
+      }
+    };
+    checkSession();
+  }, [navigate]);
+
+  // confetti for firework - finish
+  useEffect(() => {
+    if (showConfetti) {
+      const timer = setTimeout(() => {
+        setShowConfetti(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showConfetti]);
+
+  // place order - finish
+  const handlePlaceOrder = async () => {
+    const data = {
+      total: grandTotal,
+      payment: paymentMethod,
+      order: selectedCartItems,
+      name: name,
+      address: address
+    };
+
+    // post to the back end
+    try {
+      const response = await axios.post('/orders/create', data, { withCredentials: true });
+      if (response.status === 200){
+        setShowConfetti(true);
+        setShowSuccessMessage(true);
+        const paymentResponse = await axios.post('/Payment/make-payment', {
+          orderId: response.data,
+          paymentMethod: paymentMethod
+      }, {
+          withCredentials: true,
+          responseType: 'arraybuffer' // 设置响应类型为 arraybuffer
+      });
+        // 创建 Blob 对象并生成下载链接
+        const blob = new Blob([paymentResponse.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `receipt-${response.data}.pdf`); // 设置下载文件名
+        document.body.appendChild(link);
+        link.click(); // 触发下载
+        link.remove(); // 下载后移除链接
+        window.URL.revokeObjectURL(url); // 释放 URL 对象
+     }
+    } catch (error){
+      addToast('Can not place order', 'error', 3000)
+    }
   };
 
+  const displayedItems = showAllItems ? selectedCartItems : selectedCartItems.slice(0, 4);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6">Place Your Order</h2>
-        <h3 className="text-xl font-semibold mb-4">Order Summary</h3>
-        <div className="space-y-4">
-          {displayedItems.map((item, index) => (
-            <div key={index} className="flex justify-between">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-gray-500">{item.description}</p>
-              </div>
-              <p className="font-medium">${item.price.toFixed(2)}</p>
+    <div className="min-h-screen flex relative">
+      {showConfetti && <Confetti />}
+      {/* left side - order summery */}
+      <div className="hidden lg:flex w-1/2 flex-col justify-center items-center p-16 bg-gray-50">
+        <div className="w-full max-w-md bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="p-8">
+            <h2 className="text-2xl font-extrabold text-blue-600 mb-6">ShoppingCart</h2>
+            <h2 className="text-2xl font-semibold mb-4">Order Summary</h2>
+            <p className="text-3xl font-bold mb-6">Total: ${grandTotal.toFixed(2)}</p>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-4">
+              {displayedItems.map((item, index) => (
+                <div key={index} className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">{item.productName}</p>
+                    <p className="text-sm text-gray-500">{item.description}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">${item.price.toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">x {item.quantity}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {orderSummary.length > 3 && (
-          <button
-            onClick={() => setShowAllItems(!showAllItems)}
-            className="mt-4 flex items-center text-blue-600 hover:text-blue-800"
-          >
-            {showAllItems ? (
-              <>
-                <ChevronUp className="mr-1" size={16} />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="mr-1" size={16} />
-                Show all {orderSummary.length} items
-              </>
+            {selectedCartItems.length > 4 && (
+              <button
+                onClick={() => setShowAllItems(!showAllItems)}
+                className="mt-4 flex items-center text-blue-600 hover:text-blue-800"
+              >
+                {showAllItems ? (
+                  <>
+                    <ChevronUp className="mr-1" size={16} />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="mr-1" size={16} />
+                    Show all {selectedCartItems.length} items
+                  </>
+                )}
+              </button>
             )}
-          </button>
-        )}
-
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => setPaymentMethod('credit_card')}
-              className={`p-2 border rounded-md text-sm ${
-                paymentMethod === 'credit_card' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
-            >
-              <CreditCard className="mb-1" size={20} />
-              Credit Card
-            </button>
-            <button
-              onClick={() => setPaymentMethod('paypal')}
-              className={`p-2 border rounded-md text-sm ${
-                paymentMethod === 'paypal' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
-            >
-              <DollarSign className="mb-1" size={20} />
-              PayPal
-            </button>
-            <button
-              onClick={() => setPaymentMethod('digital_wallet')}
-              className={`p-2 border rounded-md text-sm ${
-                paymentMethod === 'digital_wallet' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
-            >
-              <Wallet className="mb-1" size={20} />
-              Digital Wallet
-            </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex justify-between items-center mt-8">
-          <p className="text-lg font-medium">Total:</p>
-          <p className="text-3xl font-bold text-blue-600">${total.toFixed(2)}</p>
+      {/* right side - order review */}
+      <div className="flex items-center justify-center w-full lg:w-1/2 p-12 bg-white">
+        <div className="w-full max-w-md space-y-8">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Review Your Order</h2>
+          </div>
+
+          <div className="flex justify-between mb-8">
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+              <span className="font-medium text-green-500">Shipping address</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-blue-600 rounded-full mr-2"></div>
+              <span className="font-medium text-blue-600">Review order</span>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Order Summary</h3>
+              <div className="mt-2 flex justify-between">
+                <span className="text-sm text-gray-500">Products ({selectedCartItems.length} selected)</span>
+                <span className="text-sm font-medium">${total.toFixed(2)}</span>
+              </div>
+              <div className="mt-1 flex justify-between">
+                <span className="text-sm text-gray-500">Shipping</span>
+                <span className="text-sm font-medium">${shippingCost.toFixed(2)}</span>
+              </div>
+              <div className="mt-3 flex justify-between">
+                <span className="text-base font-medium">Total</span>
+                <span className="text-base font-medium">${grandTotal.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Shipment Details</h3>
+              {shippingDetails ? (
+                <>
+                  <p className="mt-2 text-sm text-gray-500">{name}</p>
+                  <p className="mt-1 text-sm text-gray-500">{address}</p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-gray-500">No shipping details provided.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Payment Method</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {paymentMethod === 'credit_card' ? 'Credit Card' : paymentMethod === 'paypal' ? 'PayPal' : 'Digital Wallet'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-between mt-8">
+            <button
+              onClick={() => navigate('/checkout')}
+              className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <ArrowLeft className="mr-2" size={16} />
+              Previous
+            </button>
+            <button
+              onClick={handlePlaceOrder}
+              className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Place Order
+              <ArrowRight className="ml-2" size={16} />
+            </button>
+          </div>
+
+          {showSuccessMessage && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="my-modal">
+              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div className="mt-3 text-center">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                    <svg
+                      className="h-6 w-6 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      ></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">Order Placed Successfully!</h3>
+                  <div className="mt-2 px-7 py-3">
+                    <p className="text-sm text-gray-500">
+                      Thank you for your order. We'll send you a confirmation email with your order details.
+                    </p>
+                  </div>
+                  <div className="items-center px-4 py-3">
+                    <button
+                      id="ok-btn"
+                      onClick={() => {
+                        navigate('/cart');
+                        setShowSuccessMessage(false);
+                      }}
+                      className="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
+
+                      OK
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-        <button
-          onClick={handlePlaceOrder}
-          className="w-full mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300"
-        >
-          Place Order
-        </button>
       </div>
     </div>
   );
 };
 
-export default PlaceOrderPage;
+export default ReviewOrderPage;

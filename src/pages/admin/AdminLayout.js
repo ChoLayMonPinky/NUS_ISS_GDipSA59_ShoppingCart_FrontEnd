@@ -1,14 +1,38 @@
-import React, { useState } from 'react';
+// Author
+// HUANG ZHENJIA A0298312B
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Home, Package, ShoppingCart, ChartColumnStacked, Menu, X } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  // check the session - finish
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await axios.get('/users/session', { withCredentials: true });
+        console.log(response);
+        if (response.status !== 200) {
+          navigate('/signin'); 
+        }
+        if (response.data.data.role !== 'ADMIN'){
+          navigate('/gallery')
+        }
+      } catch (error) {
+        navigate('/signin');
+      }
+    };
+    checkSession();
+  }, [navigate]);
 
   const navItems = [
     { path: '/admin/categories', icon: <ChartColumnStacked size={24} />, label: 'Category' },
@@ -35,12 +59,7 @@ function AdminLayout() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center py-3 px-4 transition-colors duration-200 ${
-                location.pathname === item.path
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'hover:bg-gray-100'
-              }`}
-            >
+              className={`flex items-center py-3 px-4 transition-colors duration-200 ${location.pathname === item.path? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100'}`}>
               {item.icon}
               {isSidebarOpen && <span className="ml-4">{item.label}</span>}
             </Link>

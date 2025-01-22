@@ -1,104 +1,153 @@
+// Author
+// Wang Chang A0310544R
+// Cho Lay Mon A0310252Y
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // 获取 URL 参数
-import axios from 'axios'; // 用于发起 HTTP 请求
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Star, Plus, Minus } from 'lucide-react';
 import Navbar from '../../components/UserNavBar';
+import { useToast } from '../../components/MessageBox';
 
 export default function ProductDetail() {
-  const { id } = useParams(); // 从 URL 中获取商品的 ID
-  const [product, setProduct] = useState(null); // 商品数据状态
-  const [quantity, setQuantity] = useState(1); // 购买数量
-  const [loading, setLoading] = useState(true); // 加载状态
-  const [error, setError] = useState(null); // 错误状态
+  const { id } = useParams(); // get id from url
+  const [product, setProduct] = useState(null); // product
+  const [reviews, setReviews] = useState(null); // review
+  const [quantity, setQuantity] = useState(1); // quantity
+  const [loading, setLoading] = useState(true); // loading status
+  const [error, setError] = useState(null); // error status
+  const [user, setUser] = useState(null); // current user
+  const [averageRating, setAverageRating] = useState(0); // average rating
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   // check the session - finish
   useEffect(() => {
     const checkSession = async () => {
       try {
         const response = await axios.get('/users/session', { withCredentials: true });
-        console.log(response.data)
-        if (response.status !== 200) {
-          navigate('/signin'); // 如果用户未登录，重定向回登录页面
+        if (response.status === 200) {
+          setUser(response.data)  // get current User
+        } else {
+          navigate('/signin'); // if user not login
         }
       } catch (error) {
-        navigate('/signin'); // 如果发生错误，重定向到登录页面
+        navigate('/signin'); // if error happen
       }
     };
-  
     checkSession();
   }, [navigate]);
 
-  // 从后端获取商品数据
+  // get detial data from backend - finish
+  // if id change, will run useEffect
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`/product/${id}`); // 请求后端 API 获取商品详情
+        const response = await axios.get(`/product/${id}`); // get product detail from backend
         setProduct(response.data);
-        setLoading(false); // 加载完成
+        setLoading(false); // loading finish
       } catch (error) {
-        console.error('获取商品数据时出错:', error);
-        setError('无法获取商品数据');
+        setError('Can not get product data');
         setLoading(false);
       }
     };
-
     fetchProduct();
-  }, [id]); // 当 id 变化时重新获取数据
+  }, [id]); // when id changed, reget the detail
 
-  // 增加数量
+  // get the review by product id - finish
+  useEffect(() => {
+    const fetchReview = async () => {
+      try {
+        const response = await axios.get(`/reviews/${id}`);
+        const fetchedReviews = response.data.data;
+        setReviews(fetchedReviews);
+        // Calculate average rating
+        if (fetchedReviews && fetchedReviews.length > 0) {
+          const totalRating = fetchedReviews.reduce((acc, review) => acc + review.rating, 0);
+          const avgRating = totalRating / fetchedReviews.length;
+          setAverageRating(avgRating.toFixed(1)); // Keep one decimal place
+        } else {
+          setAverageRating(0);
+        }
+        setLoading(false);
+      } catch (error) {
+        setError('Can not get product review');
+        setLoading(false);
+      }
+    };
+    fetchReview();
+  }, [id]);
+  
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      navigate('/signin');
+      return;
+    }
+    try {
+      const formData = new URLSearchParams();
+      formData.append('productId', product.id);
+      formData.append('quantity', quantity);
+      const response = await axios.post('/cart/add', formData, {withCredentials: true});
+      if (response.status === 200) {
+        addToast('Product already added to the cart!', 'success', 3000)
+      }
+    } catch (error) {
+      addToast('Cannot add product to cart', 'error', 3000)
+    }
+  };
+
+  // increase the quantity
   const incrementQuantity = () => {
     setQuantity(prev => prev + 1);
   };
 
-  // 减少数量
+  // decrease the quantity
   const decrementQuantity = () => {
     setQuantity(prev => Math.max(1, prev - 1));
   };
 
-  // 如果数据正在加载，显示加载中
+  // loading page
   if (loading) {
-    return <div>加载中...</div>;
+    return <div>loading...</div>;
   }
 
-  // 如果发生错误，显示错误信息
+  // error page
   if (error) {
     return <div>{error}</div>;
   }
 
-  // 如果没有找到商品
+  // if can't find product
   if (!product) {
-    return <div>商品未找到</div>;
+    return <div>can't find product</div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 导航栏 */}
+      {/* navigation bar */}
       <Navbar />
-
-      {/* 商品详情 */}
+      {/* product detail */}
       <div className="container mx-auto px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* 商品图片 */}
+          {/* image */}
           <div>
             <img src={`http://localhost:8080${product.imageUrl}`} alt={product.name} className="w-full h-auto rounded-lg shadow-md" />
           </div>
 
-          {/* 商品信息 */}
+          {/* detail */}
           <div>
             <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
             <p className="text-gray-600 mb-4">{product.description}</p>
             <div className="flex items-center mb-4">
               <span className="text-2xl font-bold text-blue-600 mr-2">${product.price.toFixed(2)}</span>
-              <span className="text-sm text-gray-500">({product.stock} 库存)</span>
+              <span className="text-sm text-gray-500">({product.stock} stock)</span>
             </div>
             <div className="flex items-center mb-4">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} size={20} className={i < Math.floor(product.rating) ? "text-yellow-400 fill-current" : "text-gray-300"} />
+                <Star key={i} size={20} className={i < Math.floor(averageRating) ? "text-yellow-400 fill-current" : "text-gray-300"} />
               ))}
               <span className="ml-2 text-sm text-gray-600">
-                {product.rating} ({product.reviews ? product.reviews.length : 0} 条评论)
-              </span> {/* 确保 reviews 存在 */}
+                {product.rating} ({reviews ? reviews.length : 0} comments)
+              </span> {/* confirm whether reviews exist */}
             </div>
             <div className="flex items-center mb-6">
               <button onClick={decrementQuantity} className="bg-gray-200 text-gray-600 px-2 py-1 rounded-l">
@@ -109,21 +158,23 @@ export default function ProductDetail() {
                 <Plus size={16} />
               </button>
             </div>
-            <button className="bg-blue-500 text-white px-6 py-2 rounded-full text-lg hover:bg-blue-600 transition-colors duration-300">
-              添加到购物车
+            <button 
+              onClick={handleAddToCart}
+              className="bg-blue-500 text-white px-6 py-2 rounded-full text-lg hover:bg-blue-600 transition-colors duration-300">
+              Add to Cart
             </button>
           </div>
         </div>
 
-        {/* 评论部分 */}
+        {/* Review */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-4">用户评论</h2>
+          <h2 className="text-2xl font-bold mb-4">Customer Reviews</h2>
           <div className="space-y-4">
-            {product.reviews && product.reviews.length > 0 ? (
-              product.reviews.map(review => (
+            {reviews && reviews.length > 0 ? (
+              reviews.map(review => (
                 <div key={review.id} className="bg-white p-4 rounded-lg shadow">
                   <div className="flex items-center mb-2">
-                    <span className="font-semibold mr-2">{review.user}</span>
+                    <span className="font-semibold mr-2">{review.username}</span>
                     <div className="flex">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} size={16} className={i < review.rating ? "text-yellow-400 fill-current" : "text-gray-300"} />
@@ -131,11 +182,11 @@ export default function ProductDetail() {
                     </div>
                   </div>
                   <p className="text-gray-600">{review.comment}</p>
-                  <p className="text-sm text-gray-500 mt-2">{review.date}</p>
+                  {/* <p className="text-sm text-gray-500 mt-2">{review.date}</p> */}
                 </div>
               ))
             ) : (
-              <div>暂无评论</div>
+              <div>Not Review</div>
             )}
           </div>
         </div>

@@ -1,72 +1,108 @@
+// Author
+// HUANG ZHENJIA A0298312B
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, MapPin, Edit2, Save } from 'lucide-react';
+import axios from 'axios';
+import { useToast } from '../../components/MessageBox';
 
 export default function UserProfile() {
   const [isEditing, setIsEditing] = useState(false);
-  const [user, setUser] = useState({
-    username: '',
-    email: '',
-    phone: '',
-    address: '',
-    firstName: '',
-    lastName: '',
-  });
+  const [user, setUser] = useState(null);
+  const [originalUser, setOriginalUser] = useState(null); // save original data
+  const navigate = useNavigate();
+  const { addToast } = useToast();
 
+  // check the session - finish
   useEffect(() => {
-    // In a real application, you would fetch user data from an API
-    // This is just mock data for demonstration
-    setUser({
-      username: 'johndoe',
-      email: 'john.doe@example.com',
-      phone: '+1 (555) 123-4567',
-      address: '123 Main St, Anytown, AN 12345',
-      firstName: 'John',
-      lastName: 'Doe',
-    });
+    const checkSession = async () => {
+      try {
+        const response = await axios.get('/users/session', { withCredentials: true });
+        if (response.status !== 200) {
+          navigate('/signin'); 
+        }
+      } catch (error) {
+        navigate('/signin');
+      }
+    };
+    checkSession();
+  }, [navigate]);
+
+  // get user profile - finish
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await axios.get('/users/profile', { withCredentials: true });
+        if (response.status === 200) {
+          setUser(response.data.data);
+          setOriginalUser(response.data.data);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchUserProfile();
   }, []);
 
+  // input change - finish
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setUser(prevUser => ({
-      ...prevUser,
-      [name]: value
-    }));
+    setUser(prevUser => ({...prevUser,[name]: value}));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // In a real application, you would send the updated user data to an API
-    console.log('Updated user data:', user);
-    setIsEditing(false);
+  // submit change - finish
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // prevent the form submit by it self
+    try {
+      const response = await axios.post('/users/update', user, { withCredentials: true });
+      if (response.status === 200) {
+        console.log('Profile updated successfully:', response.data);
+        addToast('Profile updated successfully', 'success', 3000);
+        setIsEditing(false); // when submit successful
+      } else {
+        console.error('Failed to update profile:', response.status);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      addToast(error.response.data.message, 'error', 3000);
+      setUser(originalUser); // return to original data
+      setIsEditing(false);  // if submit failed
+    }
   };
+
+  // cancel edit and return the origianl data - finish
+  const handleCancel = () => {
+    setUser(originalUser); // return to the original data
+    setIsEditing(false); // exisit the edit model
+  };
+
+  if (!user) {
+    // if user not load, show loading status
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link to="/" className="flex items-center text-blue-600 mb-8">
+          <Link to="/gallery" className="flex items-center text-blue-600 mb-8">
             <ArrowLeft className="mr-2" size={20} />
             Back to Home
           </Link>
-          
           <h1 className="text-3xl font-bold mb-8">User Profile</h1>
-          
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Personal Information</h2>
+                {/* editing model */}
                 {!isEditing && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center text-blue-600 hover:text-blue-800"
-                  >
-                    <Edit2 size={20} className="mr-1" />
-                    Edit
+                  <button onClick={() => setIsEditing(true)} className="flex items-center text-blue-600 hover:text-blue-800">
+                    <Edit2 size={20} className="mr-1" />Edit
                   </button>
                 )}
               </div>
               
+              {/* form */}
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -78,7 +114,7 @@ export default function UserProfile() {
                       type="text"
                       id="username"
                       name="username"
-                      value={user.username}
+                      value={user.username || ''} // if can not get the data will use ''
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -93,7 +129,7 @@ export default function UserProfile() {
                       type="email"
                       id="email"
                       name="email"
-                      value={user.email}
+                      value={user.email || ''}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -108,7 +144,7 @@ export default function UserProfile() {
                       type="tel"
                       id="phone"
                       name="phone"
-                      value={user.phone}
+                      value={user.phone || ''}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -123,7 +159,7 @@ export default function UserProfile() {
                       type="text"
                       id="address"
                       name="address"
-                      value={user.address}
+                      value={user.address || ''}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -137,7 +173,7 @@ export default function UserProfile() {
                       type="text"
                       id="firstName"
                       name="firstName"
-                      value={user.firstName}
+                      value={user.firstName || ''}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -151,7 +187,7 @@ export default function UserProfile() {
                       type="text"
                       id="lastName"
                       name="lastName"
-                      value={user.lastName}
+                      value={user.lastName || ''}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -163,7 +199,7 @@ export default function UserProfile() {
                   <div className="mt-6 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setIsEditing(false)}
+                      onClick={handleCancel}
                       className="mr-4 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                     >
                       Cancel

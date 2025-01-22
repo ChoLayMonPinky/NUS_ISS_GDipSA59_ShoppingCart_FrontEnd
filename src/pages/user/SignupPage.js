@@ -1,6 +1,10 @@
+// Author
+// HUANG ZHENJIA A0298312B
+
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
+import { useToast } from '../../components/MessageBox';
 
 export default function SignupPage() {
   const [form, setForm] = useState({
@@ -12,7 +16,9 @@ export default function SignupPage() {
   })
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate()
+  const { addToast } = useToast();
 
+  // validate part
   const validateForm = () => {
     if (!form.username || !form.email || !form.phone || !form.password || !form.confirmPassword) {
       setErrorMessage('All fields are required')
@@ -23,6 +29,7 @@ export default function SignupPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(form.email)) {
       setErrorMessage('Please enter a valid email address')
+      alert('Please enter a valid email address');
       return false
     }
 
@@ -43,13 +50,12 @@ export default function SignupPage() {
     return true
   }
 
+  // submit method
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!validateForm()) {
       return
     }
-
     try {
       const response = await axios.post('/users/register', {
         username: form.username,
@@ -57,20 +63,18 @@ export default function SignupPage() {
         phone: form.phone,
         password: form.password,
       })
-
       if (response.data.statusCode === 200) {
-        navigate('/signin')
-      } else {
-        setErrorMessage(response.data.message || 'Registration failed')
+        addToast('Successfully register!', 'success', 3000);
+        navigate('/signin');
       }
     } catch (error) {
-      setErrorMessage('Server error, please try again later')
+      addToast(error.response.data.message, 'error', 3000);
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Left content area */}
+      {/* Left content area just a introduction part */}
       <div className="hidden lg:flex w-1/2 flex-col justify-center items-start p-16 bg-white">
         <div className="mb-6">
           <h2 className="text-2xl font-extrabold text-blue-600">ShoppingCart</h2>
@@ -118,6 +122,8 @@ export default function SignupPage() {
             <h2 className="text-2xl font-bold text-gray-900">Sign up</h2>
             <p className="text-sm text-gray-600 mt-1">Create your account to get started</p>
           </div>
+
+          {/* error message username, phone, emial password or confrim password error */}
           {errorMessage && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
               <div className="flex items-center">
@@ -125,6 +131,7 @@ export default function SignupPage() {
               </div>
             </div>
           )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
@@ -195,8 +202,8 @@ export default function SignupPage() {
             </div>
           </form>
 
-           {/* 添加社交媒体注册选项 */}
-           <div className="mt-6">
+          {/* other sigin up method */}
+          <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -225,9 +232,7 @@ export default function SignupPage() {
               </div>
             </div>
           </div>
-
-          <div className="mt-4 text-center text-sm text-gray-600">
-            Already have an account?{' '}
+          <div className="mt-4 text-center text-sm text-gray-600">Already have an account?{' '}
             <Link to="/signin" className="font-medium text-blue-600 hover:text-blue-500">
               Sign in
             </Link>
